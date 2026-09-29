@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#080f2b">
+<title>CRT Timer</title>
+
+<style>
+*{
+  box-sizing:border-box;
+  margin:0;
+  padding:0;
+}
+
+body{
+  min-height:100vh;
+  background:
+    linear-gradient(rgba(255,255,255,0.025) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,0.025) 1px,transparent 1px),
+    #080f2b;
+  background-size:80px 80px;
+  font-family:Arial,Helvetica,sans-serif;
+  color:white;
+  padding:30px 20px;
+}
+
+.container{
+  width:100%;
+  max-width:1000px;
+  margin:auto;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:28px;
+}
+
+.card{
+  position:relative;
+  min-height:430px;
+  padding:42px 38px;
+  border-radius:38px;
+  background:linear-gradient(145deg,#1d2e63,#172653);
+  border:2px solid #263d78;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.04),
+    0 15px 40px rgba(0,0,0,.20);
+  transition:.25s ease;
+}
+
+.card.active{
+  border:3px solid #f5b82e;
+  box-shadow:
+    0 0 25px rgba(245,184,46,.15),
+    inset 0 1px 0 rgba(255,255,255,.04);
+}
+
+.number{
+  position:absolute;
+  right:35px;
+  top:27px;
+  font-size:30px;
+  color:#b8c3df;
+}
+
+.icon-box{
+  width:116px;
+  height:116px;
+  border-radius:30px;
+  background:#0c1739;
+  border:2px solid #263d78;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  margin-bottom:35px;
+}
+
+.icon{
+  font-size:62px;
+  line-height:1;
+}
+
+.time{
+  font-size:clamp(42px,5vw,62px);
+  font-weight:800;
+  color:#f6c34d;
+  letter-spacing:-2px;
+  margin-bottom:10px;
+}
+
+.timezone{
+  font-size:28px;
+  color:#bfc9df;
+  margin-bottom:32px;
+}
+
+.new-york{
+  font-size:28px;
+  color:white;
+}
+
+.new-york strong{
+  font-weight:800;
+}
+
+.countdown{
+  position:absolute;
+  left:45px;
+  bottom:-25px;
+  padding:15px 30px;
+  border-radius:35px;
+  background:#f5b82e;
+  color:#111827;
+  font-size:22px;
+  font-weight:800;
+  white-space:nowrap;
+  z-index:20;
+  box-shadow:0 8px 20px rgba(245,184,46,.30);
+}
+
+@media(max-width:700px){
+  body{
+    padding:18px 12px;
+  }
+
+  .grid{
+    grid-template-columns:1fr;
+    gap:22px;
+  }
+
+  .card{
+    min-height:360px;
+    padding:30px 28px;
+    border-radius:30px;
+  }
+
+  .icon-box{
+    width:90px;
+    height:90px;
+    border-radius:24px;
+    margin-bottom:28px;
+  }
+
+  .icon{
+    font-size:48px;
+  }
+
+  .time{
+    font-size:45px;
+  }
+
+  .timezone,
+  .new-york{
+    font-size:22px;
+  }
+
+  .number{
+    right:25px;
+    top:22px;
+  }
+
+  .countdown{
+    left:28px;
+    bottom:-22px;
+    font-size:18px;
+    padding:13px 22px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<main class="container">
+  <section class="grid" id="timerGrid"></section>
+</main>
+
+<script>
+
+const sessions = [
+  {hour:4,  minute:30},
+  {hour:5,  minute:30},
+  {hour:11, minute:30},
+  {hour:14, minute:30},
+  {hour:17, minute:30},
+  {hour:18, minute:30}
+];
+
+const grid = document.getElementById("timerGrid");
+
+function getAfghanistanParts(){
+
+  const now = new Date();
+
+  const parts = new Intl.DateTimeFormat("en-US",{
+    timeZone:"Asia/Kabul",
+    year:"numeric",
+    month:"numeric",
+    day:"numeric",
+    hour:"numeric",
+    minute:"numeric",
+    second:"numeric",
+    hour12:false
+  }).formatToParts(now);
+
+  const result = {};
+
+  parts.forEach(part=>{
+    if(part.type !== "literal"){
+      result[part.type] = Number(part.value);
+    }
+  });
+
+  if(result.hour === 24){
+    result.hour = 0;
+  }
+
+  return result;
+}
+
+
+function createAfghanistanTarget(
+  year,
+  month,
+  day,
+  hour,
+  minute
+){
+
+  return new Date(
+    Date.UTC(
+      year,
+      month - 1,
+      day,
+      hour,
+      minute,
+      0
+    ) - (4.5 * 60 * 60 * 1000)
+  );
+}
+
+
+function getNextSession(session){
+
+  const now = new Date();
+
+  const current = getAfghanistanParts();
+
+  let target = createAfghanistanTarget(
+    current.year,
+    current.month,
+    current.day,
+    session.hour,
+    session.minute
+  );
+
+  if(target > now){
+    return target;
+  }
+
+  const tomorrow = new Date(
+    Date.UTC(
+      current.year,
+      current.month - 1,
+      current.day + 1
+    )
+  );
+
+  const tomorrowParts =
+    new Intl.DateTimeFormat("en-US",{
+      timeZone:"Asia/Kabul",
+      year:"numeric",
+      month:"numeric",
+      day:"numeric"
+    }).formatToParts(tomorrow);
+
+  const t = {};
+
+  tomorrowParts.forEach(part=>{
+    if(part.type !== "literal"){
+      t[part.type] = Number(part.value);
+    }
+  });
+
+  return createAfghanistanTarget(
+    t.year,
+    t.month,
+    t.day,
+    session.hour,
+    session.minute
+  );
+}
+
+
+function formatAfghanistan(date){
+
+  return date.toLocaleTimeString("en-US",{
+    timeZone:"Asia/Kabul",
+    hour:"numeric",
+    minute:"2-digit",
+    hour12:true
+  });
+
+}
+
+
+function formatNewYork(date){
+
+  return date.toLocaleTimeString("en-US",{
+    timeZone:"America/New_York",
+    hour:"numeric",
+    minute:"2-digit",
+    hour12:true
+  });
+
+}
+
+
+function getIcon(hour){
+
+  if(hour >= 18 || hour < 6){
+    return "🌙";
+  }
+
+  if(hour >= 6 && hour < 8){
+    return "🌅";
+  }
+
+  return "☀️";
+}
+
+
+function countdown(milliseconds){
+
+  let totalSeconds =
+    Math.max(0,Math.floor(milliseconds / 1000));
+
+  const hours =
+    Math.floor(totalSeconds / 3600);
+
+  totalSeconds =
+    totalSeconds % 3600;
+
+  const minutes =
+    Math.floor(totalSeconds / 60);
+
+  const seconds =
+    totalSeconds % 60;
+
+  if(hours > 0){
+    return "Next in " + hours + "h " + minutes + "m";
+  }
+
+  if(minutes > 0){
+    return "Next in " + minutes + "m " + seconds + "s";
+  }
+
+  return "Next in " + seconds + "s";
+}
+
+
+function updateTimer(){
+
+  const now = new Date();
+
+  const upcoming = sessions.map(session=>({
+    session:session,
+    target:getNextSession(session)
+  }));
+
+  let nextIndex = 0;
+
+  for(let i = 1; i < upcoming.length; i++){
+
+    if(
+      upcoming[i].target.getTime() <
+      upcoming[nextIndex].target.getTime()
+    ){
+      nextIndex = i;
+    }
+
+  }
+
+  grid.innerHTML = "";
+
+  upcoming.forEach((item,index)=>{
+
+    const target = item.target;
+    const session = item.session;
+
+    const isNext = index === nextIndex;
+
+    const afghanistanTime =
+      formatAfghanistan(target);
+
+    const newYorkTime =
+      formatNewYork(target);
+
+    const icon =
+      getIcon(session.hour);
+
+    let countdownHTML = "";
+
+    if(isNext){
+
+      countdownHTML = `
+        <div class="countdown">
+          ${countdown(target.getTime() - now.getTime())}
+        </div>
+      `;
+
+    }
+
+    const card =
+      document.createElement("article");
+
+    card.className =
+      isNext ? "card active" : "card";
+
+    card.innerHTML = `
+
+      <span class="number">
+        ${index + 1}
+      </span>
+
+      <div class="icon-box">
+        <span class="icon">
+          ${icon}
+        </span>
+      </div>
+
+      <div class="time">
+        ${afghanistanTime}
+      </div>
+
+      <div class="timezone">
+        Afghanistan
+      </div>
+
+      <div class="new-york">
+        New York:
+        <strong>${newYorkTime}</strong>
+      </div>
+
+      ${countdownHTML}
+
+    `;
+
+    grid.appendChild(card);
+
+  });
+
+}
+
+
+updateTimer();
+
+setInterval(updateTimer,1000);
+
+</script>
+
+</body>
+</html>
