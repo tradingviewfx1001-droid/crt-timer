@@ -1,0 +1,11 @@
+{
+  "name": "CRT Timer",
+  "short_name": "CRT Timer",
+  "description": "CRT trading session timer for Afghanistan and New York time",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#080f2b",
+  "theme_color": "#080f2b",
+  "orientation": "portrait",
+  "icons": []
+}
